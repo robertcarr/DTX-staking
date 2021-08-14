@@ -1,0 +1,50 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "composite": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "declaration": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "module": "commonjs",
+    "target": "es2018",
+    "allowJs": false,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true
+  },
+  "include": [
+    "./scripts",
+    "./test",
+    "./migrations",
+    "./solcconfig.json",
+    "./waffle.json",
+    "./build",
+    "./build/contracts/IUniswap.json",
+    "./build/contracts/Databroker.json",
+    "./build/contracts/USDT.json",
+    "./build/contracts/DTX.json",
+    "./build/contracts/Staking.json",
+    "./build/contracts/StakingV2.json"
+  ],
+  "exclude": ["dist/**/*"],
+  "files": [
+    "./buidler.config.ts",
+    "./node_modules/@nomiclabs/buidler-truffle5/src/type-extensions.d.ts",
+    "./node_modules/@nomiclabs/buidler-web3/src/type-extensions.d.ts",
+    "./solcconfig.json",
+    "./waffle.json"
+  ]
+}

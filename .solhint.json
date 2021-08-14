@@ -1,0 +1,18 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "indent": "off",
+    "bracket-align": "off",
+    "compiler-fixed": "off",
+    "no-simple-event-func-name": "off",
+    "two-lines-top-level-separator": "off",
+    "function-max-lines": "off",
+    "space-after-comma": "off",
+    "no-empty-blocks": "off",
+    "max-line-length": "off",
+    "prettier/prettier": "warn",
+    "compiler-version": "off",
+    "mark-callable-contracts": "off"
+  },
+  "plugins": ["prettier"]
+}
