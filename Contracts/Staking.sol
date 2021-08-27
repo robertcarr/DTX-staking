@@ -54,8 +54,13 @@ contract Staking is
     require(hasRole(ADMIN_ROLE, msg.sender), "Caller is not an admin");
     _;
   }
-  modifier isInitialRatioSet() {
+  modifier isInitialRatioNotSet() {
     require(!initialRatioFlag, "Initial Ratio has already been set");
+    _;
+  }
+
+  modifier isInitialRatioSet() {
+    require(initialRatioFlag, "Initial Ratio has not yet been set");
     _;
   }
 
@@ -89,7 +94,7 @@ contract Staking is
 
   function setInitialRatio(uint256 stakeAmount)
     public
-    isInitialRatioSet
+    isInitialRatioNotSet
     hasAdminRole
   {
     require(
@@ -114,7 +119,11 @@ contract Staking is
     emit StakeAdded(msg.sender, stakeAmount, stakeAmount);
   }
 
-  function createStake(uint256 stakeAmount) public whenNotPaused {
+  function createStake(uint256 stakeAmount)
+    public
+    whenNotPaused
+    isInitialRatioSet
+  {
     uint256 shares = (stakeAmount * totalShares) /
       dtxToken.balanceOf(address(this));
 
@@ -133,21 +142,16 @@ contract Staking is
   }
 
   function removeStake(uint256 stakeAmount) public whenNotPaused {
-    require(
-      stakeholderToStake[msg.sender].stakedDTX >= stakeAmount,
-      "Not enough staked!"
-    );
+    uint256 stakeholderStake = stakeholderToStake[msg.sender].stakedDTX;
+    uint256 stakeholderShares = stakeholderToStake[msg.sender].shares;
 
-    uint256 stakedRatio = (stakeholderToStake[msg.sender].stakedDTX * base) /
-      stakeholderToStake[msg.sender].shares;
+    require(stakeholderStake >= stakeAmount, "Not enough staked!");
 
+    uint256 stakedRatio = (stakeholderStake * base) / stakeholderShares;
     uint256 currentRatio = (dtxToken.balanceOf(address(this)) * base) /
       totalShares;
-
-    uint256 sharesToWithdraw = (stakeAmount *
-      stakeholderToStake[msg.sender].shares) /
-      stakeholderToStake[msg.sender].stakedDTX;
-
+    uint256 sharesToWithdraw = (stakeAmount * stakeholderShares) /
+      stakeholderStake;
     uint256 rewards = (sharesToWithdraw * (currentRatio - stakedRatio)) / base;
 
     stakeholderToStake[msg.sender].shares -= sharesToWithdraw;
@@ -180,10 +184,19 @@ contract Staking is
   }
 
   function rewardOf(address stakeholder) public view returns (uint256) {
+    uint256 stakeholderStake = stakeholderToStake[stakeholder].stakedDTX;
     uint256 stakeholderShares = stakeholderToStake[stakeholder].shares;
-    uint256 stakeholderStakes = stakeholderToStake[stakeholder].stakedDTX;
 
-    return ((stakeholderShares * getDtxPerShare()) / base) - stakeholderStakes;
+    if (stakeholderShares == 0) {
+      return 0;
+    }
+
+    uint256 stakedRatio = (stakeholderStake * base) / stakeholderShares;
+    uint256 currentRatio = (dtxToken.balanceOf(address(this)) * base) /
+      totalShares;
+    uint256 rewards = (stakeholderShares * (currentRatio - stakedRatio)) / base;
+
+    return rewards;
   }
 
   function getTotalStakes() public view returns (uint256) {
@@ -203,19 +216,25 @@ contract Staking is
     uint256 s;
 
     for (s = from; s < to; s += 1) {
-      dtxToken.transfer(
-        stakeholders.at(s),
-        stakeholderToStake[stakeholders.at(s)].stakedDTX
+      totalStakes -= stakeholderToStake[stakeholders.at(s)].stakedDTX;
+
+      require(
+        dtxToken.transfer(
+          stakeholders.at(s),
+          stakeholderToStake[stakeholders.at(s)].stakedDTX
+        ),
+        "DTX transfer failed"
       );
+
       stakeholderToStake[stakeholders.at(s)].stakedDTX = 0;
     }
+  }
 
-    // Return remaining DTX to owner (platform commission)
-    if (s == stakeholders.length()) {
-      uint256 balance = dtxToken.balanceOf(address(this));
-      if (balance != 0) {
-        require(dtxToken.transfer(msg.sender, balance), "DTX transfer failed");
-      }
-    }
+  function removeLockedRewards() public hasAdminRole {
+    require(totalStakes == 0, "Stakeholders still have stakes");
+
+    uint256 balance = dtxToken.balanceOf(address(this));
+
+    require(dtxToken.transfer(msg.sender, balance), "DTX transfer failed");
   }
 }

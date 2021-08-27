@@ -156,6 +156,11 @@ contract('Staking V3', async (accounts) => {
       476190476190476200000
     );
 
+    console.log(
+      'rewards',
+      (await stakingInstance.rewardOf(staker4)).toString()
+    );
+
     // Staker4 withdraws 500 DTX
     await stakingInstance.removeStake(web3.utils.toWei('500'), {
       from: staker4,
@@ -349,11 +354,6 @@ contract('Staking V3', async (accounts) => {
       from: staker5,
     });
 
-    console.log(
-      'balanceOf staker5',
-      parseInt(await dtxInstance.balanceOf(staker5))
-    );
-
     // Staker1 withdraws 500 DTX
     await stakingInstance.removeStake(web3.utils.toWei('500'), {
       from: staker1,
@@ -465,7 +465,7 @@ contract('Staking V3', async (accounts) => {
     );
   });
 
-  it('setInitialRatio should revert if totalStakes and totalShares are not 0', async () => {
+  it('setInitialRatio should revert if contract dtx balance and totalShares are not 0', async () => {
     await dtxInstance.transfer(
       stakingInstance.address,
       web3.utils.toWei('500'),
@@ -558,6 +558,29 @@ contract('Staking V3', async (accounts) => {
     );
   });
 
+  it('should return reward as 0 when stakes for the stakeholder is 0', async () => {
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: admin,
+      }
+    );
+    await stakingInstance.setInitialRatio(web3.utils.toWei('500'), {
+      from: admin,
+    });
+
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('100'),
+      {
+        from: owner,
+      }
+    );
+
+    expect(parseInt(await stakingInstance.rewardOf(staker2))).to.be.equal(0);
+  });
+
   it('should get the total stakes', async () => {
     await dtxInstance.approve(
       stakingInstance.address,
@@ -575,7 +598,85 @@ contract('Staking V3', async (accounts) => {
     );
   });
 
-  it('should refund DTX to the respective stakeholders', async () => {
+  it('removeLockedRewards should revert if refund is not processed for all stakeholders', async () => {
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.setInitialRatio(web3.utils.toWei('500'), {
+      from: staker1,
+    });
+
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('1000'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('1000'), {
+      from: staker2,
+    });
+
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('100'),
+      {
+        from: owner,
+      }
+    );
+
+    await expectRevert(
+      stakingInstance.removeLockedRewards({ from: admin }),
+      'Stakeholders still have stakes -- Reason given: Stakeholders still have stakes.'
+    );
+  });
+
+  it('removeLockedRewards should revert if not called by admin', async () => {
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.setInitialRatio(web3.utils.toWei('500'), {
+      from: staker1,
+    });
+
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('1000'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('1000'), {
+      from: staker2,
+    });
+
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('100'),
+      {
+        from: owner,
+      }
+    );
+
+    await stakingInstance.refundLockedDTX(0, 2, {
+      from: admin,
+    });
+
+    await expectRevert(
+      stakingInstance.removeLockedRewards({ from: staker2 }),
+      'Caller is not an admin -- Reason given: Caller is not an admin.'
+    );
+  });
+
+  it('refundLockDTX should refund DTX to the respective stakeholders and removeLockedRewards should be transfer remaining rewards to admin', async () => {
     await dtxInstance.approve(
       stakingInstance.address,
       web3.utils.toWei('500'),
@@ -646,7 +747,7 @@ contract('Staking V3', async (accounts) => {
     });
 
     expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
-      web3.utils.toWei('600')
+      web3.utils.toWei('500')
     );
     expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
       web3.utils.toWei('1000')
@@ -654,9 +755,100 @@ contract('Staking V3', async (accounts) => {
     expect((await dtxInstance.balanceOf(staker3)).toString()).to.be.equal(
       web3.utils.toWei('500')
     );
+
+    await stakingInstance.removeLockedRewards({ from: admin });
+
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      web3.utils.toWei('600')
+    );
   });
-  // TODO: Scenario3 - 1wei DTX reward added to the program
-  // it.only('scenario3', async () => {});
+
+  it('refundLockDTX should refund DTX to the respective stakeholders and removeLockedRewards should be transfer remaining rewards to admin', async () => {
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.setInitialRatio(web3.utils.toWei('500'), {
+      from: staker1,
+    });
+
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('1000'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('1000'), {
+      from: staker2,
+    });
+
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: staker3,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('500'), {
+      from: staker3,
+    });
+
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('100'),
+      {
+        from: owner,
+      }
+    );
+
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      web3.utils.toWei('0')
+    );
+    expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
+      web3.utils.toWei('0')
+    );
+    expect((await dtxInstance.balanceOf(staker3)).toString()).to.be.equal(
+      web3.utils.toWei('0')
+    );
+
+    await stakingInstance.refundLockedDTX(0, 2, {
+      from: admin,
+    });
+
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      web3.utils.toWei('500')
+    );
+    expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
+      web3.utils.toWei('1000')
+    );
+    expect((await dtxInstance.balanceOf(staker3)).toString()).to.be.equal(
+      web3.utils.toWei('0')
+    );
+
+    await stakingInstance.refundLockedDTX(2, 3, {
+      from: admin,
+    });
+
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      web3.utils.toWei('500')
+    );
+    expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
+      web3.utils.toWei('1000')
+    );
+    expect((await dtxInstance.balanceOf(staker3)).toString()).to.be.equal(
+      web3.utils.toWei('500')
+    );
+
+    await stakingInstance.removeLockedRewards({ from: admin });
+
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      web3.utils.toWei('600')
+    );
+  });
 
   it('should be able to call setInitialRatio once', async () => {
     await dtxInstance.approve(
@@ -675,6 +867,90 @@ contract('Staking V3', async (accounts) => {
         from: admin,
       }),
       'Initial Ratio has already been set -- Reason given: Initial Ratio has already been set.'
+    );
+  });
+
+  it('should not be able to call createStake if initial ratio has not been set', async () => {
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: admin,
+      }
+    );
+
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('1000'),
+      {
+        from: staker2,
+      }
+    );
+
+    await expectRevert(
+      stakingInstance.createStake(web3.utils.toWei('1000'), {
+        from: staker2,
+      }),
+      'Initial Ratio has not yet been set -- Reason given: Initial Ratio has not yet been set.'
+    );
+  });
+
+  /* Scenario3 - 1wei DTX reward added to the program
+   * Small rewards get accumulated till it makes up in 18 digits of calculation
+   * But it dont have effect on the stakeholder's withdrawal
+   */
+  it('scenario3', async () => {
+    // Staker1 create a stake of 500 DTX
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.setInitialRatio(web3.utils.toWei('500'), {
+      from: staker1,
+    });
+
+    // Staker2 create a stake of 1000 DTX
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('1000'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('1000'), {
+      from: staker2,
+    });
+
+    // Add platform rewards of 1 wei DTX
+    await dtxInstance.transfer(stakingInstance.address, '1', {
+      from: owner,
+    });
+
+    // Staker1 remove stake
+    await stakingInstance.removeStake(web3.utils.toWei('500'), {
+      from: staker1,
+    });
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      web3.utils.toWei('500')
+    );
+
+    // Add platform rewards of 100 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('100'),
+      { from: owner }
+    );
+
+    // Staker2 remove stake
+    const tx = await stakingInstance.removeStake(web3.utils.toWei('1000'), {
+      from: staker2,
+    });
+
+    expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
+      web3.utils.toWei('1100')
     );
   });
 });
