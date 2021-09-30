@@ -20,6 +20,6 @@ The financial logic of the staking Smart Contract is to assign shares to each st
 By default the initial ratio will be set at 1:1, so 1 DTX is equal to 1 share. Each user which stake at this ratio will receive an equal amout of shares for the number of DTX she/he staked. 
 As previously mentionned, during the month a commission will be sent to the Databroker smart contract, which will alter the number of DTX on the contract and by default alter the ratio share:DTX . The underlying formula can be simplified as followed:
 
+<img src="https://latex.codecogs.com/svg.latex?\Large&space;x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}" title="\Large x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}" />
 
-<img src="https://latex.codecogs.com/svg.latex?\Large&space;x=\frac{SUM DTX}{SUM Shares}" title="\Large x=\frac{SUM DTX}{SUM Shares}" />
 
