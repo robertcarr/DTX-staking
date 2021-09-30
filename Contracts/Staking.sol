@@ -42,12 +42,18 @@ contract Staking is
 
   mapping(address => Stake) private stakeholderToStake;
 
-  event StakeAdded(address indexed stakeholder, uint256 amount, uint256 shares);
+  event StakeAdded(
+    address indexed stakeholder,
+    uint256 amount,
+    uint256 shares,
+    uint256 timestamp
+  );
   event StakeRemoved(
     address indexed stakeholder,
     uint256 amount,
     uint256 shares,
-    uint256 reward
+    uint256 reward,
+    uint256 timestamp
   );
 
   modifier hasAdminRole() {
@@ -116,7 +122,7 @@ contract Staking is
       "DTX transfer failed"
     );
 
-    emit StakeAdded(msg.sender, stakeAmount, stakeAmount);
+    emit StakeAdded(msg.sender, stakeAmount, stakeAmount, block.timestamp);
   }
 
   function createStake(uint256 stakeAmount)
@@ -138,7 +144,7 @@ contract Staking is
     totalStakes += stakeAmount;
     totalShares += shares;
 
-    emit StakeAdded(msg.sender, stakeAmount, shares);
+    emit StakeAdded(msg.sender, stakeAmount, shares, block.timestamp);
   }
 
   function removeStake(uint256 stakeAmount) public whenNotPaused {
@@ -152,7 +158,12 @@ contract Staking is
       totalShares;
     uint256 sharesToWithdraw = (stakeAmount * stakeholderShares) /
       stakeholderStake;
-    uint256 rewards = (sharesToWithdraw * (currentRatio - stakedRatio)) / base;
+
+    uint256 rewards = 0;
+
+    if (currentRatio > stakedRatio) {
+      rewards = (sharesToWithdraw * (currentRatio - stakedRatio)) / base;
+    }
 
     stakeholderToStake[msg.sender].shares -= sharesToWithdraw;
     stakeholderToStake[msg.sender].stakedDTX -= stakeAmount;
@@ -168,7 +179,13 @@ contract Staking is
       stakeholders.remove(msg.sender);
     }
 
-    emit StakeRemoved(msg.sender, stakeAmount, sharesToWithdraw, rewards);
+    emit StakeRemoved(
+      msg.sender,
+      stakeAmount,
+      sharesToWithdraw,
+      rewards,
+      block.timestamp
+    );
   }
 
   function getDtxPerShare() public view returns (uint256) {
@@ -194,13 +211,47 @@ contract Staking is
     uint256 stakedRatio = (stakeholderStake * base) / stakeholderShares;
     uint256 currentRatio = (dtxToken.balanceOf(address(this)) * base) /
       totalShares;
+
+    if (currentRatio <= stakedRatio) {
+      return 0;
+    }
+
     uint256 rewards = (stakeholderShares * (currentRatio - stakedRatio)) / base;
+
+    return rewards;
+  }
+
+  function rewardForDTX(address stakeholder, uint256 dtxAmount)
+    public
+    view
+    returns (uint256)
+  {
+    uint256 stakeholderStake = stakeholderToStake[stakeholder].stakedDTX;
+    uint256 stakeholderShares = stakeholderToStake[stakeholder].shares;
+
+    require(stakeholderStake >= dtxAmount, "Not enough staked!");
+
+    uint256 stakedRatio = (stakeholderStake * base) / stakeholderShares;
+    uint256 currentRatio = (dtxToken.balanceOf(address(this)) * base) /
+      totalShares;
+    uint256 sharesToWithdraw = (dtxAmount * stakeholderShares) /
+      stakeholderStake;
+
+    if (currentRatio <= stakedRatio) {
+      return 0;
+    }
+
+    uint256 rewards = (sharesToWithdraw * (currentRatio - stakedRatio)) / base;
 
     return rewards;
   }
 
   function getTotalStakes() public view returns (uint256) {
     return totalStakes;
+  }
+
+  function getTotalShares() public view returns (uint256) {
+    return totalShares;
   }
 
   function getCurrentRewards() public view returns (uint256) {

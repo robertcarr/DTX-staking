@@ -12,7 +12,7 @@ contract('Staking V3', async (accounts) => {
   const base = 10 ** 18;
 
   beforeEach(async () => {
-    dtxInstance = await DTX.new(utils.parseUnits('999999'), {
+    dtxInstance = await DTX.new(utils.parseUnits('9999999999'), {
       from: owner,
     });
 
@@ -951,6 +951,394 @@ contract('Staking V3', async (accounts) => {
 
     expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
       web3.utils.toWei('1100')
+    );
+  });
+
+  it('rewardForDTX', async () => {
+    // Staker1 create a stake of 500 DTX
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('500'),
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.setInitialRatio(web3.utils.toWei('500'), {
+      from: staker1,
+    });
+
+    // Staker2 create a stake of 1000 DTX
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('1000'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('1000'), {
+      from: staker2,
+    });
+
+    // Add platform rewards of 200 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('200'),
+      {
+        from: owner,
+      }
+    );
+
+    expect(
+      parseInt(
+        await stakingInstance.rewardForDTX(staker2, web3.utils.toWei('500'))
+      )
+    ).to.equal(66666666666666660000);
+
+    await stakingInstance.removeStake(web3.utils.toWei('500'), {
+      from: staker2,
+    });
+
+    expect(
+      parseInt(
+        await stakingInstance.rewardForDTX(staker2, web3.utils.toWei('500'))
+      )
+    ).to.equal(66666666666666660000);
+
+    await stakingInstance.removeStake(web3.utils.toWei('500'), {
+      from: staker2,
+    });
+
+    expect(
+      parseInt(
+        await stakingInstance.rewardForDTX(staker1, web3.utils.toWei('500'))
+      )
+    ).to.equal(66666666666666660000);
+
+    expect(66666666666666660000 * 3).to.be.equal(
+      parseInt(web3.utils.toWei('200'))
+    );
+
+    expect((await stakingInstance.getTotalShares()).toString()).to.be.equal(
+      web3.utils.toWei('500')
+    );
+  });
+
+  it('rewardForDTX - precision test', async () => {
+    // Staker1 create a stake of 10 DTX
+    await dtxInstance.approve(stakingInstance.address, web3.utils.toWei('10'), {
+      from: staker1,
+    });
+    await stakingInstance.setInitialRatio(web3.utils.toWei('10'), {
+      from: staker1,
+    });
+
+    // Add platform rewards of 10 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('10'),
+      {
+        from: owner,
+      }
+    );
+
+    // staker1 stake again post rewards - 100120100000000000000000 wei DTX
+    await dtxInstance.transfer(staker1, '100120100000000000000000', {
+      from: owner,
+    });
+    await dtxInstance.approve(
+      stakingInstance.address,
+      '100120100000000000000000',
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.createStake('100120100000000000000000', {
+      from: staker1,
+    });
+
+    // Stake1 removes very small odd amount of 5 wei DTX at dtxPerShare = 2
+    await stakingInstance.removeStake('5', {
+      from: staker1,
+    });
+
+    // Staker2 creates stake for 20299 DTX
+    await dtxInstance.transfer(staker2, web3.utils.toWei('19299'), {
+      from: owner,
+    });
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('20299'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('20299'), {
+      from: staker2,
+    });
+
+    // Staker2 should not get precision error but instead should get 0 rewards
+    expect(
+      (
+        await stakingInstance.rewardForDTX(staker2, web3.utils.toWei('20299'))
+      ).toString()
+    ).to.be.equal('0');
+
+    // staker1 has some stake before rewards, staker1 rewards should not be 0;
+    expect(
+      (
+        await stakingInstance.rewardForDTX(staker1, '100120100000000000000000')
+      ).toString()
+    ).to.be.equal('9999001299309568205');
+  });
+
+  it('removeStake - precision test', async () => {
+    // Staker1 create a stake of 10 DTX
+    await dtxInstance.approve(stakingInstance.address, web3.utils.toWei('10'), {
+      from: staker1,
+    });
+    await stakingInstance.setInitialRatio(web3.utils.toWei('10'), {
+      from: staker1,
+    });
+
+    // Add platform rewards of 10 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('10'),
+      {
+        from: owner,
+      }
+    );
+
+    // staker1 stake again post rewards - 100120100000000000000000 wei DTX
+    await dtxInstance.transfer(staker1, '100120100000000000000000', {
+      from: owner,
+    });
+    await dtxInstance.approve(
+      stakingInstance.address,
+      '100120100000000000000000',
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.createStake('100120100000000000000000', {
+      from: staker1,
+    });
+
+    // Stake1 removes very small odd amount of 5 wei DTX at dtxPerShare = 2
+    await stakingInstance.removeStake('5', {
+      from: staker1,
+    });
+
+    // Staker2 creates stake for 20299 DTX
+    await dtxInstance.transfer(staker2, web3.utils.toWei('19299'), {
+      from: owner,
+    });
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('20299'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('20299'), {
+      from: staker2,
+    });
+
+    // Staker2 should not get precision error but instead should get 0 rewards
+    await stakingInstance.removeStake(web3.utils.toWei('20299'), {
+      from: staker2,
+    });
+    // Staker2 should get only his stake amount with no rewards
+    expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
+      web3.utils.toWei('20299')
+    );
+  });
+
+  it('rewardOf - precision test', async () => {
+    // Staker1 create a stake of 10 DTX
+    await dtxInstance.approve(stakingInstance.address, web3.utils.toWei('10'), {
+      from: staker1,
+    });
+    await stakingInstance.setInitialRatio(web3.utils.toWei('10'), {
+      from: staker1,
+    });
+
+    // Add platform rewards of 10 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('10'),
+      {
+        from: owner,
+      }
+    );
+
+    // staker1 stake again post rewards - 100120100000000000000000 wei DTX
+    await dtxInstance.transfer(staker1, '100120100000000000000000', {
+      from: owner,
+    });
+    await dtxInstance.approve(
+      stakingInstance.address,
+      '100120100000000000000000',
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.createStake('100120100000000000000000', {
+      from: staker1,
+    });
+
+    // Stake1 removes very small odd amount of 5 wei DTX at dtxPerShare = 2
+    await stakingInstance.removeStake('5', {
+      from: staker1,
+    });
+
+    // Staker2 creates stake for 20299 DTX
+    await dtxInstance.transfer(staker2, web3.utils.toWei('19299'), {
+      from: owner,
+    });
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('20299'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('20299'), {
+      from: staker2,
+    });
+
+    // Staker2 should not get precision error but instead should get 0 rewards
+    expect((await stakingInstance.rewardOf(staker2)).toString()).to.be.equal(
+      '0'
+    );
+
+    // staker1 has some stake before rewards, staker1 rewards should not be 0;
+    expect((await stakingInstance.rewardOf(staker1)).toString()).to.be.equal(
+      '9999999999999969989'
+    );
+  });
+
+  it('More rewards than staked dtx', async () => {
+    // Staker1 create a stake of 100 DTX
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('100'),
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.setInitialRatio(web3.utils.toWei('100'), {
+      from: staker1,
+    });
+
+    // Add platform rewards of 1233 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('1233'),
+      {
+        from: owner,
+      }
+    );
+
+    // staker2 stake 333
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('333'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('333'), {
+      from: staker2,
+    });
+
+    // staker1 stake 400 DTX
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('400'),
+      {
+        from: staker1,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('400'), {
+      from: staker1,
+    });
+
+    // Add platform rewards of 1000 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('1000'),
+      {
+        from: owner,
+      }
+    );
+
+    // staker1 removes 1333
+    await stakingInstance.removeStake(web3.utils.toWei('253'), {
+      from: staker1,
+    });
+
+    // staker2 removes 333
+    await stakingInstance.removeStake(web3.utils.toWei('333'), {
+      from: staker2,
+    });
+
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      '1301340400774443368813'
+    );
+    expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
+      '1161181026137463697967'
+    );
+  });
+
+  it('Max and min stakes', async () => {
+    // Staker1 create a stake of 1wei DTX
+    await dtxInstance.approve(stakingInstance.address, '1', {
+      from: staker1,
+    });
+    await stakingInstance.setInitialRatio('1', {
+      from: staker1,
+    });
+
+    // staker2 stake 10000000
+    await dtxInstance.transfer(staker2, web3.utils.toWei('10000000'), {
+      from: owner,
+    });
+    await dtxInstance.approve(
+      stakingInstance.address,
+      web3.utils.toWei('10000000'),
+      {
+        from: staker2,
+      }
+    );
+    await stakingInstance.createStake(web3.utils.toWei('10000000'), {
+      from: staker2,
+    });
+
+    // Add platform rewards of 1233 DTX
+    await dtxInstance.transfer(
+      stakingInstance.address,
+      web3.utils.toWei('1233'),
+      {
+        from: owner,
+      }
+    );
+
+    // staker1 removes 1 wei DTX
+    await stakingInstance.removeStake('1', {
+      from: staker1,
+    });
+
+    // staker2 removes 333
+    await stakingInstance.removeStake(web3.utils.toWei('10000000'), {
+      from: staker2,
+    });
+
+    expect((await dtxInstance.balanceOf(staker1)).toString()).to.be.equal(
+      '500000000000000000000' // existing 499 DTX from beforeEach + 1 wei DTX from stake
+    );
+    expect((await dtxInstance.balanceOf(staker2)).toString()).to.be.equal(
+      '10002233000000000000000000' // 10002233
     );
   });
 });
