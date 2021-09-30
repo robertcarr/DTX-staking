@@ -30,3 +30,9 @@ The above formula will update the ratio at which each stakeholder will be able t
 And in the same veine, the transition for the ratio between time T and time T+1 (after the stake) would be expressed as follow:
 
 <img src="https://latex.codecogs.com/svg.image?x&space;=&space;\sum&space;Share&space;(t-1)&space;-&space;\frac{stakedAmout}{ratio&space;ShareDtx&space;(t-1)}" title="x = \sum Share (t-1) - \frac{stakedAmout}{ratio ShareDtx (t-1)}" />
+
+
+## Final comment
+
+The smart contract has been deployed on the Polygon network for the sake of speed and cost compared to the Ethereum mainnet. The application built is a react application directly connected to network, it can be accessible on the following link: https://staking.databroker.global. It accepts for now couple of wallets and the team is working on additional ones, please use it at your own risk.
+
