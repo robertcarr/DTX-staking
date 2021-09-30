@@ -11,7 +11,7 @@ In order to remedy this problem, we decided to launch our Staking Program. The a
 
 ## Staking Financial flow
 
-![alt text](https://github.com/databrokerglobal/DTX-staking/financial_flow.png)
+![alt text](https://github.com/databrokerglobal/DTX-staking/blob/main/financial_flow.png)
 
 In a nutshell, at every single deal done on the platform databroker.global a commission is sent to Databroker staking smart contract. It does mean that the commission per month will not be same from one month to the other. The more deals being done, the more rewards will be sent to the token holders.
 
