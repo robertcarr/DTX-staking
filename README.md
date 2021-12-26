@@ -34,5 +34,5 @@ And in the same veine, the transition for the ratio between time T and time T+1 
 
 ## Final comment
 
-The smart contract has been deployed on the Polygon network for the sake of speed and cost compared to the Ethereum mainnet. The application built is a react application directly connected to network, it can be accessible on the following link: https://wwww.staking.databroker.global. It accepts for now couple of wallets and the team is working on additional ones, please use it at your own risk.
+The smart contract has been deployed on the Polygon network for the sake of speed and cost compared to the Ethereum mainnet. The application built is a react application directly connected to network, it can be accessible on the following link: https://www.staking.databroker.global. It accepts for now couple of wallets and the team is working on additional ones, please use it at your own risk.
 
